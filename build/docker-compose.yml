@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: react-app
+    ports:
+      - "80:80"
+    restart: always
