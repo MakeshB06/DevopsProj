@@ -1,22 +1,31 @@
 pipeline {
     agent any
 
-    triggers {
-        githubPush()
-    }
-
     environment {
-        DOCKER_IMAGE = "react-app"
+        DOCKER_DEV_REPO = "yourdockerhubusername/dev"
+        DOCKER_PROD_REPO = "yourdockerhubusername/prod"
     }
 
     stages {
-        stage('Build & Push Image') {
+        stage('Build Docker Image') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub-credentials', 
-                    usernameVariable: 'DOCKER_USERNAME', 
-                    passwordVariable: 'DOCKER_PASSWORD'
-                )]) {
+                script {
+                    def imageName = env.BRANCH_NAME == 'master' ? "${DOCKER_PROD_REPO}" : "${DOCKER_DEV_REPO}"
+                    sh "docker build -t ${imageName}:latest ."
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                     script {
-                        echo "Running deployment script..."
-                        sh 'chmod +x deploy.sh'
+                        def imageName = env.BRANCH_NAME == 'master' ? "${DOCKER_PROD_REPO}" : "${DOCKER_DEV_REPO}"
+                        sh "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"
+                        sh "docker push ${imageName}:latest"
+                    }
+                }
+            }
+        }
+    }
+}
